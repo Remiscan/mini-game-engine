@@ -72,37 +72,15 @@ export default class Game {
     // Detect keydown events and update the list of controls.
     document.addEventListener('keydown', event => {
       const buttonID = event.code || event.key;
-      let button = this.state.controls[buttonID];
-
       const actions = this.state.actions.filter(a => a.controls.includes(buttonID));
       actions.map(a => a.active = true);
-
-      if (typeof button === 'undefined') {
-        this.state.controls[buttonID] = {
-          pressed: false,
-          startTime: null,
-          endTime: null
-        };
-      }
-
-      button = button || this.state.controls[buttonID];
-      button.pressed = true;
-      button.startTime = Date.now();
-      button.endTime = null;
     });
 
     // Detect keyup events and update the list of controls.
     document.addEventListener('keyup', event => {
       const buttonID = event.code || event.key;
-      let button = this.state.controls[buttonID];
-
       const actions = this.state.actions.filter(a => a.controls.includes(buttonID));
       actions.map(a => a.active = false);
-
-      if (typeof button === 'undefined') return;
-      button.pressed = false;
-      button.startTime = null;
-      button.endTime = Date.now();
     });
   }
 
