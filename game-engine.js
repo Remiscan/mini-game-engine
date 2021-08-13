@@ -29,7 +29,6 @@ export default class Game {
 
     // State of the game, used to compute what to display on the next frame
     this.state = state;
-    this.state.controls = {};
     this.state.actions = actions;
 
     this.frameRate = frameRate;

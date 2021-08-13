@@ -1,8 +1,33 @@
-import Game, * as GEM from '../game-engine.js';
+import Game, * as GEM from '../game-engine.min.js';
 
 
 
 let startTime;
+
+const actions = [
+  {
+    name: 'Jump',
+    controls: ['Space']
+  }, {
+    name: 'Up',
+    controls: ['ArrowUp', 'KeyW']
+  }, {
+    name: 'Down',
+    controls: ['ArrowDown', 'KeyS']
+  }, {
+    name: 'Left',
+    controls: ['ArrowLeft', 'KeyA']
+  }, {
+    name: 'Right',
+    controls: ['ArrowRight', 'KeyD']
+  }
+];
+
+const state = {
+  jumpFrames: 0
+};
+
+
 
 const start = function() {
   startTime = Date.now();
@@ -25,31 +50,6 @@ const update = function() {
   }
 
   startTime = endTime;
-};
-
-
-const actions = [
-  {
-    name: 'Jump',
-    controls: ['Space']
-  }, {
-    name: 'Up',
-    controls: ['ArrowUp', 'KeyW']
-  }, {
-    name: 'Down',
-    controls: ['ArrowDown', 'KeyS']
-  }, {
-    name: 'Left',
-    controls: ['ArrowLeft', 'KeyA']
-  }, {
-    name: 'Right',
-    controls: ['ArrowRight', 'KeyD']
-  }
-];
-
-
-const state = {
-  jumpFrames: 0
 };
 
 
