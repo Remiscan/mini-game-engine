@@ -12,7 +12,7 @@ export class Game {
    * @param {object} options.state - The initial state data of the game.
    * @param {Action} options.actions - The list of actions and their associated controls.
    * @param {Level} options.levels - The list of game levels.
-   * @param {number} options.frameRate - The number of frames that will be computed per second.
+   * @param {number} options.tickRate - The number of frames that will be computed per second.
    */
   constructor(start = function(){}, update = function(){}, {
     canvas = document.querySelector('canvas'),
@@ -20,7 +20,7 @@ export class Game {
     state = {},
     actions = {},
     levels = new Set(),
-    frameRate = 60
+    tickRate = 60
   } = {}) {
     this.canvas = canvas;
     this.html = html;
@@ -28,40 +28,86 @@ export class Game {
     // State of the game, used to compute what to display on the next frame
     this.state = state;
     this.state.actions = actions;
+    this.state.level = null;
 
     this.width = canvas.width;
     this.height = canvas.height;
-    this.frameRate = frameRate;
     this.audioCtx = null;
     this.paused = false;
     this.mute = false;
     this.levels = levels;
-    this.currentLevel = null;
     
-    this.start = start.bind(this); // Function executed on game launch
-    this.update = update.bind(this); // Function executed every frame
+    // Function executed on game launch.
+    this.start = start.bind(this);
+
+    /* 🔽 Manage game loop 🔽 */
+
+    this.tickRate = tickRate;
+    const tickDuration = 1000 / this.tickRate;
+
+    // Function that will be executed by the worker.
+    function up(event) {
+      if (self.computing) return;
+      self.computing = true;
+      const port = event.ports[0];
+      const { state, actions, ticks } = JSON.parse(event.data);
+      const newState = update(state, actions, ticks);
+      port.postMessage(JSON.stringify(newState));
+      self.computing = false;
+    }
+
+    // Create a worker, that will be tasked to compute the updated game state.
+    const worker = new Worker(
+      URL.createObjectURL(
+        new Blob(['let computing = false; onmessage =', up.toString()], { type: 'text/javascript' })
+      )
+    );
+
+    const chan = new MessageChannel();
+
+    // Update the game state when receiving the updated data from the worker.
+    chan.port1.onmessage = event => this.state = JSON.parse(event.data);
+
+    // Asks the worker to compute the updated game state.
+    const requestUpdates = ticks => {
+      this.lastTick += ticks * tickDuration;
+      worker.postMessage(JSON.stringify({ state: this.state, actions: this.currentActions, ticks }), [chan.port2]);
+    };
+
+    // Game loop. At each frame:
+    // - request an updated game state to the worker,
+    // - render the current game state.
+    function gameLoop(frameTime) {
+      this.stopLoop = window.requestAnimationFrame(gameLoop.bind(this));
+      const nextTick = this.lastTick + tickDuration;
+
+      let ticks = 0;
+      if (frameTime > nextTick) {
+        const elapsed = frameTime - this.lastTick;
+        ticks = Math.floor(elapsed / tickDuration);
+      }
+
+      requestUpdates(ticks);
+      this.render();
+      this.lastRender = frameTime;
+    }
+
+    this.gameLoop = gameLoop.bind(this);
+
+    /* 🔼 End of game loop management 🔼 */
   }
 
 
   /** Starts the game. */
   play() {
     this.initControls();
-    this.start();
+    this.audioCtx = new (AudioContext || webkitAudioContext)();
 
-    const pausable = function* () {
-      let i = 0;
-      while (true) {
-        this.currentLevel?.objects.map(obj => obj.update());
-        this.currentLevel?.update();
-        this.update();
-        yield i;
-        i++;
-      }
-    };
-    const pausableUpdate = pausable.bind(this)();
-    setInterval(() => {
-      if (!this.paused) pausableUpdate.next();
-    }, 1000 / this.frameRate);
+    this.lastTick = performance.now();
+    this.lastRender = this.lastTick;
+
+    this.start();
+    this.gameLoop(performance.now());
   }
 
 
@@ -79,15 +125,12 @@ export class Game {
    * Loads a level, its sprites and its sounds.
    * @param {string} id - Identifier of the level.
    */
-  async loadLevel(id) {
-    this.currentLevel = this.levels.find(level => level.id === id);
-    if (this.audioCtx === null) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    // Load sounds.
-    let responses = await Promise.all(this.currentLevel.sounds.map(sound => fetch(`./assets/${sound}.mp3`)));
-    responses = await Promise.all(responses.map(r => r.arrayBuffer()));
-    responses = await Promise.all(responses.map(r => audioCtx.decodeAudioData(r)));
-    this.currentLevel.sounds = this.currentLevel.sounds.map((id, k) => { return { id: id, sound: responses[k] } });
+  async playLevel(id) {
+    this.pause = true;
+    const lev = this.levels.find(level => level.id === id);
+    await lev.play();
+    this.game.state.level = lev;
+    this.pause = false;
   }
 
 
@@ -99,9 +142,9 @@ export class Game {
     if (this.mute) return;
 
     const sound = this.audioCtx.createBufferSource();
-    const k = this.currentLevel.sounds.findIndex(s => s.id == id);
+    const k = this.state.level.sounds.findIndex(s => s.id == id);
     if (k == -1) throw `Sound ${id} doesn't exist`;
-    sound.buffer = this.currentLevel.sounds[k].sound;
+    sound.buffer = this.state.level.sounds[k].sound;
     sound.connect(this.audioCtx.destination);
     sound.start();
   }
@@ -146,22 +189,36 @@ export class Game {
  * @property {object} sounds - The list of sounds used in the level.
  * @property {AudioContext|webkitAudioContext} audioCtx - The audio context.
  */
-export class Level {
+class Level {
   constructor(game, start = function(){}, update = function(){}, {
     width = null,
     height = null,
     objects = new Set(),
     sounds = []
   }) {
-    this.game = game;
-    this.width = width || this.game.width;
-    this.height = height || this.game.height;
+    this.width = width || game.width;
+    this.height = height || game.height;
     this.objects = objects;
     this.sounds = sounds.map(name => { return { id: name, sound: null } });
-    this.cameraCoordinates = { x: 0, y: 0, z: 0, angle: 0 };
+    this.cameraCoordinates = { x: 0, y: 0, z: 0, angle: 0, perspective: 0 };
 
     this.start = start.bind(this);
     this.update = update.bind(this);
+  }
+
+  async load() {
+    // Load sounds.
+    let responses = await Promise.all(this.sounds.map(sound => fetch(`./assets/${sound}.mp3`)));
+    responses = await Promise.all(responses.map(r => r.arrayBuffer()));
+    responses = await Promise.all(responses.map(r => audioCtx.decodeAudioData(r)));
+    this.sounds = this.sounds.map((id, k) => { return { id: id, sound: responses[k] } });
+    return;
+  }
+
+  async play() {
+    await this.load();
+    this.start();
+    return;
   }
 
   addObject(...args) {
@@ -198,8 +255,8 @@ export class Level {
 /**
  * @class GameObject.
  */
-export class GameObject {
-  constructor(level, start = function(){}, update = function(){}, {
+class GameObject {
+  constructor({
     x = 0,
     y = 0,
     z = 0,
@@ -209,17 +266,15 @@ export class GameObject {
     collision = false,
     damage = false,
   }) {
-    this.level = level;
-    this.game = this.level.game;
     this.position = { x, y, z };
+    this.destination = { x, y, z };
+    this.speed = 0;
+
     this.width = width;
     this.height = height;
     this.sprite = sprite;
     this.collision = collision;
     this.damage = damage;
-
-    this.start = start.bind(this);
-    this.update = update.bind(this);
   }
 
   /**
