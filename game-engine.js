@@ -14,7 +14,7 @@ export class Game {
    * @param {Level} options.levels - The list of game levels.
    * @param {number} options.frameRate - The number of frames that will be computed per second.
    */
-  constructor(start, update, {
+  constructor(start = function(){}, update = function(){}, {
     canvas = document.querySelector('canvas'),
     html = document.querySelector('accessible-elements'),
     state = {},
@@ -147,7 +147,7 @@ export class Game {
  * @property {AudioContext|webkitAudioContext} audioCtx - The audio context.
  */
 export class Level {
-  constructor(game, start, update, {
+  constructor(game, start = function(){}, update = function(){}, {
     width = null,
     height = null,
     objects = new Set(),
@@ -199,7 +199,7 @@ export class Level {
  * @class GameObject.
  */
 export class GameObject {
-  constructor(level, start, update, {
+  constructor(level, start = function(){}, update = function(){}, {
     x = 0,
     y = 0,
     z = 0,
