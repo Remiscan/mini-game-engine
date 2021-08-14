@@ -24,36 +24,38 @@ const actions = [
 ];
 
 const state = {
-  jumpFrames: 0
+  jumpFrames: 0,
+  startTime: performance.now()
 };
 
 
 
 const start = function() {
-  startTime = Date.now();
+  
 };
 
 
-const update = function() {
-  const endTime = Date.now();
-  console.log(`New frame after ${endTime - startTime} ms`);
+const update = function(state, actions, ticks) {
+  const endTime = performance.now();
+  console.log(`New tick after ${endTime - state.startTime} ms`);
 
-  const currentActions = this?.currentActions;
-  console.log(currentActions);
+  console.log('Actions:', actions);
 
-  if (currentActions.includes('Jump')) { this.state.jumpFrames++; }
+  if (actions.includes('Jump')) { state.jumpFrames++; }
   else {
-    if (this.state.jumpFrames > 0) {
-      console.log(`Jumped for ${this.state.jumpFrames} frames`);
-      this.state.jumpFrames = 0;
+    if (state.jumpFrames > 0) {
+      console.log(`Jumped for ${state.jumpFrames} ticks`);
+      state.jumpFrames = 0;
     }
   }
 
   startTime = endTime;
+
+  return state;
 };
 
 
-const game = new GEM.Game(start, update, { frameRate: 4, actions, state });
+const game = new GEM.Game(start, update, { tickRate: 4, actions, state });
 game.play();
 
 

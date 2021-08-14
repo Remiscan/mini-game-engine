@@ -48,30 +48,40 @@ export class Game {
     // Function that will be executed by the worker.
     function up(event) {
       if (self.computing) return;
+
+      const data = JSON.parse(event.data);
+
+      if (data.type === 'init') {
+        self.port = event.ports[0];
+        return;
+      }
+      
       self.computing = true;
-      const port = event.ports[0];
-      const { state, actions, ticks } = JSON.parse(event.data);
-      const newState = update(state, actions, ticks);
-      port.postMessage(JSON.stringify(newState));
+      const { state, actions, ticks } = data;
+      const newState = self.update(state, actions, ticks);
+      self.port.postMessage(JSON.stringify(newState));
       self.computing = false;
     }
 
     // Create a worker, that will be tasked to compute the updated game state.
     const worker = new Worker(
       URL.createObjectURL(
-        new Blob(['let computing = false; onmessage =', up.toString()], { type: 'text/javascript' })
+        new Blob(['computing = false; port = null; update =', update.toString(), '; onmessage =', up.toString()], { type: 'text/javascript' })
       )
     );
 
+    // Initializes a communication channel between this script and the worker.
     const chan = new MessageChannel();
+    worker.postMessage(JSON.stringify({ type: 'init' }), [chan.port2]);
 
     // Update the game state when receiving the updated data from the worker.
     chan.port1.onmessage = event => this.state = JSON.parse(event.data);
 
     // Asks the worker to compute the updated game state.
     const requestUpdates = ticks => {
+      if (ticks <= 0) return;
       this.lastTick += ticks * tickDuration;
-      worker.postMessage(JSON.stringify({ state: this.state, actions: this.currentActions, ticks }), [chan.port2]);
+      worker.postMessage(JSON.stringify({ state: this.state, actions: this.currentActions, ticks }));
     };
 
     // Game loop. At each frame:
@@ -79,8 +89,9 @@ export class Game {
     // - render the current game state.
     function gameLoop(frameTime) {
       this.stopLoop = window.requestAnimationFrame(gameLoop.bind(this));
-      const nextTick = this.lastTick + tickDuration;
+      if (this.paused) return;
 
+      const nextTick = this.lastTick + tickDuration;
       let ticks = 0;
       if (frameTime > nextTick) {
         const elapsed = frameTime - this.lastTick;
@@ -108,6 +119,12 @@ export class Game {
 
     this.start();
     this.gameLoop(performance.now());
+  }
+
+
+  /** Renders the game. */
+  render() {
+    
   }
 
 
@@ -233,7 +250,7 @@ class Level {
    * @param {number} z - Depth coordinate of the top left corner of the camera view.
    * @param {number} angle - Angle of rotation (in degrees) of the camera around the z axis.
    */
-  set camera(x, y, z = 0, angle = 0) {
+  set camera({ x, y, z = 0, angle = 0 } = {}) {
     const oldPosition = Object.assign({}, this.cameraCoordinates);
     this.cameraCoordinates = { x, y, z, angle };
     const moveBy = { x: oldPosition.x - this.cameraCoordinates.x, y: oldPosition.y - this.cameraCoordinates.y, z: oldPosition.z - this.cameraCoordinates.z, angle: oldPosition.angle - this.cameraCoordinates.angle };
