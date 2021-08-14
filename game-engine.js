@@ -1,16 +1,7 @@
 /**
- * Game action, with a name and a list of associated controls.
- * @typedef {Object} Action
- * @property {string} name - Name of the action (example: 'jump');
- * @property {string[]} controls - List of controls / button codes associated with that action (example: ['A', 'Space']);
- */
-
-
-
-/**
  * @class Game object.
  */
-export default class Game {
+export class Game {
   /**
    * Builds a new game.
    * @param {function} start - The function executed on game launch.
@@ -39,7 +30,7 @@ export default class Game {
     this.state.actions = actions;
 
     this.frameRate = frameRate;
-    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    this.audioCtx = null;
     this.paused = false;
     this.mute = false;
     this.levels = levels;
@@ -76,6 +67,7 @@ export default class Game {
    */
   async loadLevel(id) {
     this.currentLevel = this.levels.find(level => level.id === id);
+    if (this.audioCtx === null) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     // Load sounds.
     let responses = await Promise.all(this.currentLevel.sounds.map(sound => fetch(`./assets/${sound}.mp3`)));
@@ -149,3 +141,14 @@ export class Level {
     this.sounds = sounds.map(name => { return { id: name, sound: null } });
   }
 }
+
+
+
+/** TYPE DEFINITIONS */
+
+/**
+ * Game action, with a name and a list of associated controls.
+ * @typedef {Object} Action
+ * @property {string} name - Name of the action (example: 'jump');
+ * @property {string[]} controls - List of controls / button codes associated with that action (example: ['A', 'Space']);
+ */

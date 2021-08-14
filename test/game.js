@@ -1,4 +1,4 @@
-import Game, * as GEM from '../game-engine.min.js';
+import * as GEM from '../game-engine.min.js';
 
 
 
@@ -53,7 +53,7 @@ const update = function() {
 };
 
 
-const game = new Game(start, update, { frameRate: 4, actions, state });
+const game = new GEM.Game(start, update, { frameRate: 4, actions, state });
 game.play();
 
 
