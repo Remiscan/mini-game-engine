@@ -1,5 +1,5 @@
 /**
- * @class Game object.
+ * @class Game.
  */
 export class Game {
   /**
@@ -19,7 +19,7 @@ export class Game {
     html = document.querySelector('accessible-elements'),
     state = {},
     actions = {},
-    levels = [],
+    levels = new Set(),
     frameRate = 60
   } = {}) {
     this.canvas = canvas;
@@ -29,6 +29,8 @@ export class Game {
     this.state = state;
     this.state.actions = actions;
 
+    this.width = canvas.width;
+    this.height = canvas.height;
     this.frameRate = frameRate;
     this.audioCtx = null;
     this.paused = false;
@@ -49,6 +51,8 @@ export class Game {
     const pausable = function* () {
       let i = 0;
       while (true) {
+        this.currentLevel?.objects.map(obj => obj.update());
+        this.currentLevel?.update();
         this.update();
         yield i;
         i++;
@@ -58,6 +62,16 @@ export class Game {
     setInterval(() => {
       if (!this.paused) pausableUpdate.next();
     }, 1000 / this.frameRate);
+  }
+
+
+  /**
+   * Adds a level to the game.
+   * @param {...any} args 
+   */
+  addLevel(...args) {
+    const lev = new Level(this, ...args);
+    this.levels.add(lev);
   }
 
 
@@ -133,12 +147,90 @@ export class Game {
  * @property {AudioContext|webkitAudioContext} audioCtx - The audio context.
  */
 export class Level {
-  constructor({
-    sprites = {},
+  constructor(game, start, update, {
+    width = null,
+    height = null,
+    objects = new Set(),
     sounds = []
   }) {
-    this.sprites = sprites;
+    this.game = game;
+    this.width = width || this.game.width;
+    this.height = height || this.game.height;
+    this.objects = objects;
     this.sounds = sounds.map(name => { return { id: name, sound: null } });
+    this.cameraCoordinates = { x: 0, y: 0, z: 0, angle: 0 };
+
+    this.start = start.bind(this);
+    this.update = update.bind(this);
+  }
+
+  addObject(...args) {
+    const spr = new GameObject(this, ...args);
+    this.objects.add(spr);
+  }
+
+  /**
+   * Move the camera by moving all objects on the canvas.
+   * @param {number} x - Horizontal coordinate of the top left corner of the camera view.
+   * @param {number} y - Vertical coordinate of the top left corner of the camera view.
+   * @param {number} z - Depth coordinate of the top left corner of the camera view.
+   * @param {number} angle - Angle of rotation (in degrees) of the camera around the z axis.
+   */
+  set camera(x, y, z = 0, angle = 0) {
+    const oldPosition = Object.assign({}, this.cameraCoordinates);
+    this.cameraCoordinates = { x, y, z, angle };
+    const moveBy = { x: oldPosition.x - this.cameraCoordinates.x, y: oldPosition.y - this.cameraCoordinates.y, z: oldPosition.z - this.cameraCoordinates.z, angle: oldPosition.angle - this.cameraCoordinates.angle };
+    for (const obj of this.objects) {
+      // Move obj by moveBy, maybe with an added variable for perspective?
+      obj.moveTo(
+        obj.position.x + moveBy.x,
+        obj.position.y + moveBy.y,
+        obj.position.z + moveBy.z
+      );
+    }
+  }
+
+  get camera() { return this.cameraCoordinates; }
+}
+
+
+
+/**
+ * @class GameObject.
+ */
+export class GameObject {
+  constructor(level, start, update, {
+    x = 0,
+    y = 0,
+    z = 0,
+    width = 0,
+    height = 0,
+    sprite = null,
+    collision = false,
+    damage = false,
+  }) {
+    this.level = level;
+    this.game = this.level.game;
+    this.position = { x, y, z };
+    this.width = width;
+    this.height = height;
+    this.sprite = sprite;
+    this.collision = collision;
+    this.damage = damage;
+
+    this.start = start.bind(this);
+    this.update = update.bind(this);
+  }
+
+  /**
+   * Moves a sprite on the canvas.
+   * @param {number} x 
+   * @param {number} y 
+   * @param {number} z 
+   * @param {number} angle 
+   */
+  moveTo(x, y, z) {
+
   }
 }
 
