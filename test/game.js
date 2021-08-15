@@ -2,6 +2,7 @@ import * as GEM from '../game-engine.min.js';
 
 
 
+// User controls
 const actions = [
   {
     name: 'Jump',
@@ -21,6 +22,9 @@ const actions = [
   }
 ];
 
+
+
+// Initial state
 const state = {
   jumpFrames: 0,
   startTime: performance.now()
@@ -28,11 +32,8 @@ const state = {
 
 
 
-const start = function() {
-  
-};
-
-
+// Game loop functions
+const start = function(){};
 const update = function(state, actions, ticks) {
   const endTime = performance.now();
   console.log(`New tick after ${endTime - state.startTime} ms`);
@@ -53,8 +54,27 @@ const update = function(state, actions, ticks) {
 };
 
 
+
+// Game levels
 const game = new GEM.Game(start, update, { tickRate: 4, actions, state });
-game.play();
+const level0 = game.addLevel({
+  id: 'test0'
+});
+level0.addObject({
+  width: game.width,
+  height: game.height,
+  draw: canvas => {
+    canvas.fillStyle = 'black';
+    canvas.fillRect(0, 0, game.width, game.height);
+  }
+});
+console.log(game.levels);
+game.loadLevel('test0');
 
 
-window.addEventListener('click', () => game.paused = !game.paused);
+
+// Page interface
+const buttonPlay = document.querySelector('.load-game');
+buttonPlay.addEventListener('click', () => { buttonPlay.remove(); game.play(); });
+const buttonPause = document.querySelector('.pause-game');
+buttonPause.addEventListener('click', () => game.paused = !game.paused);
