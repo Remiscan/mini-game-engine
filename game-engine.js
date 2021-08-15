@@ -22,7 +22,7 @@ export class Game {
     levels = new Set(),
     tickRate = 60
   } = {}) {
-    this.canvas = canvas;
+    this.canvas = canvas.getContext('2d');
     this.html = html;
 
     // State of the game, used to compute what to display on the next frame
@@ -125,7 +125,21 @@ export class Game {
 
   /** Renders the game. */
   render() {
-    
+    this.canvas.clearRect(0, 0, this.width, this.height);
+    const camera = this.state.level.camera;
+    // Sort objects by their elevation (z)
+    const orderedObjects = this.state.level.objects.sort((a, b) => a.z < b.z ? -1 : a.z > b.z ? 1 : 0);
+    // Draw all objects from the current level
+    for (const obj of orderedObjects) {
+      // Compute the position of the object in the current camera view
+      const posX = this.position.x - camera.x;
+      const posY = this.position.y - camera.y;
+      // Don't draw an object that's outside of the camera view
+      if (posX < -obj.width || posY < -obj.height || posX > this.width || posY > this.height) continue;
+      // Draw an object by using its sprite or its draw function
+      if (obj.sprite) canvas.drawImage( this.sprite, posX, posY, this.width, this.height );
+      else            obj.draw();
+    }
   }
 
 
@@ -281,6 +295,7 @@ class GameObject {
     width = 0,
     height = 0,
     sprite = null,
+    draw = () => {},
     collision = false,
     damage = false,
   }) {
@@ -291,6 +306,8 @@ class GameObject {
     this.width = width;
     this.height = height;
     this.sprite = sprite;
+    this.draw = draw;
+    
     this.collision = collision;
     this.damage = damage;
   }
