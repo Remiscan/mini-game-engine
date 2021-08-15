@@ -84,7 +84,8 @@ export class Game {
       worker.postMessage(JSON.stringify({ state: this.state, actions: this.currentActions, ticks }));
     };
 
-    // Game loop. At each frame:
+    // Game loop (inspired by https://developer.mozilla.org/en-US/docs/Games/Anatomy).
+    // On each frame:
     // - request an updated game state to the worker,
     // - render the current game state.
     function gameLoop(frameTime) {
