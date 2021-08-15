@@ -33,43 +33,46 @@ const state = {
 
 
 // Game loop functions
-const start = function(){};
-const update = function(state, actions, ticks) {
+const start = async function() {
+  const level0 = this.addLevel({
+    id: 'test0'
+  });
+
+  level0.addObject({
+    width: this.width,
+    height: this.height,
+    draw: canvas => {
+      canvas.fillStyle = 'black';
+      canvas.fillRect(0, 0, this.width, this.height);
+    }
+  });
+
+  console.log(this.levels);
+  await this.loadLevel('test0');
+  return;
+};
+
+const update = function(ticks) {
   const endTime = performance.now();
-  console.log(`New tick after ${endTime - state.startTime} ms`);
+  console.log(`New tick after ${endTime - this.state.startTime} ms`);
 
-  console.log('Actions:', actions);
+  console.log('Actions:', this.state.actions);
+  console.log('Objects:', this.state.level.objects);
 
-  if (actions.includes('Jump')) { state.jumpFrames++; }
+  if (this.state.actions.includes('Jump')) { this.state.jumpFrames++; }
   else {
-    if (state.jumpFrames > 0) {
-      console.log(`Jumped for ${state.jumpFrames} ticks`);
-      state.jumpFrames = 0;
+    if (this.state.jumpFrames > 0) {
+      console.log(`Jumped for ${this.state.jumpFrames} ticks`);
+      this.state.jumpFrames = 0;
     }
   }
 
-  state.startTime = endTime;
-
-  return state;
+  this.state.startTime = endTime;
 };
 
 
 
-// Game levels
-const game = new GEM.Game(start, update, { tickRate: 4, actions, state });
-const level0 = game.addLevel({
-  id: 'test0'
-});
-level0.addObject({
-  width: game.width,
-  height: game.height,
-  draw: canvas => {
-    canvas.fillStyle = 'black';
-    canvas.fillRect(0, 0, game.width, game.height);
-  }
-});
-console.log(game.levels);
-game.loadLevel('test0');
+const game = new GEM.Game(start, update, [], { tickRate: 4, actions, state });
 
 
 

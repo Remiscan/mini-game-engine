@@ -14,7 +14,7 @@ export class Game {
    * @param {Level} options.levels - The list of game levels.
    * @param {number} options.tickRate - The number of frames that will be computed per second.
    */
-  constructor(start = function(){}, update = function(){}, {
+  constructor(start = function(){}, update = function(){}, functions = [], {
     canvas = document.querySelector('canvas'),
     html = document.querySelector('accessible-elements'),
     state = {},
@@ -25,17 +25,18 @@ export class Game {
     this.canvas = canvas.getContext('2d');
     this.html = html;
 
-    // State of the game, used to compute what to display on the next frame
-    this.state = state;
-    this.state.actions = actions;
-    this.state.level = null;
-
     this.width = canvas.width;
     this.height = canvas.height;
     this.audioCtx = null;
     this.paused = false;
     this.mute = false;
     this.levels = levels;
+    this.actions = actions;
+
+    // State of the game, used to compute what to display on the next frame
+    this.state = state;
+    this.state.level = null;
+    this.state.actions = [];
     
     // Function executed on game launch.
     this.start = start.bind(this);
@@ -44,49 +45,23 @@ export class Game {
 
     this.tickRate = tickRate;
     const tickDuration = 1000 / this.tickRate;
+    this.computing = false;
+    this.rendering = false;
 
-    // Function that will be executed by the worker.
-    function up(event) {
-      if (self.computing) return;
-
-      const data = JSON.parse(event.data);
-
-      if (data.type === 'init') {
-        self.port = event.ports[0];
-        return;
-      }
-      
-      self.computing = true;
-      const { state, actions, ticks } = data;
-      const newState = self.update(state, actions, ticks);
-      self.port.postMessage(JSON.stringify(newState));
-      self.computing = false;
-    }
-
-    // Create a worker, that will be tasked to compute the updated game state.
-    const worker = new Worker(
-      URL.createObjectURL(
-        new Blob(['computing = false; port = null; update =', update.toString(), '; onmessage =', up.toString()], { type: 'text/javascript' })
-      )
-    );
-
-    // Initializes a communication channel between this script and the worker.
-    const chan = new MessageChannel();
-    worker.postMessage(JSON.stringify({ type: 'init' }), [chan.port2]);
-
-    // Update the game state when receiving the updated data from the worker.
-    chan.port1.onmessage = event => this.state = JSON.parse(event.data);
-
-    // Asks the worker to compute the updated game state.
+    // Request an update to the game state.
     const requestUpdates = ticks => {
       if (ticks <= 0) return;
+      if (this.computing) return;
+      this.computing = true;
       this.lastTick += ticks * tickDuration;
-      worker.postMessage(JSON.stringify({ state: this.state, actions: this.currentActions, ticks }));
+      this.state.actions = this.currentActions;
+      update.bind(this)(ticks); // if async, won't block rendering
+      this.computing = false;
     };
 
     // Game loop (inspired by https://developer.mozilla.org/en-US/docs/Games/Anatomy).
     // On each frame:
-    // - request an updated game state to the worker,
+    // - request an update to the game state,
     // - render the current game state.
     function gameLoop(frameTime) {
       this.stopLoop = window.requestAnimationFrame(gameLoop.bind(this));
@@ -100,8 +75,7 @@ export class Game {
       }
 
       requestUpdates(ticks);
-      this.render();
-      this.lastRender = frameTime;
+      this.render(frameTime);
     }
 
     this.gameLoop = gameLoop.bind(this);
@@ -111,38 +85,47 @@ export class Game {
 
 
   /** Starts the game. */
-  play() {
-    if (!(this.state.level instanceof Level)) throw 'No level loaded';
-
+  async play() {
     this.initControls();
     this.audioCtx = new (AudioContext || webkitAudioContext)();
 
     this.lastTick = performance.now();
     this.lastRender = this.lastTick;
 
-    this.start();
+    await this.start();
+    if (!(this.state.level instanceof Level)) throw 'No level loaded';
     this.gameLoop(performance.now());
   }
 
 
-  /** Renders the game. */
-  render() {
+  /**
+   * Renders the game.
+   * @param {DOMHighResTimeStamp} frameTime - Can be used to interpolate.
+   */
+  render(frameTime) {
+    if (this.rendering) return;
+    this.rendering = true;
+    this.lastRender = frameTime;
+
+    // Clears the previous frame
     this.canvas.clearRect(0, 0, this.width, this.height);
+
     const camera = this.state.level.camera;
-    console.log(this.state);
     // Sort objects by their elevation (z)
     const orderedObjects = this.state.level.objects.sort((a, b) => a.z < b.z ? -1 : a.z > b.z ? 1 : 0);
     // Draw all objects from the current level
     for (const obj of orderedObjects) {
       // Compute the position of the object in the current camera view
-      const posX = this.position.x - camera.x;
-      const posY = this.position.y - camera.y;
+      const posX = obj.position.x - camera.x;
+      const posY = obj.position.y - camera.y;
       // Don't draw an object that's outside of the camera view
       if (posX < -obj.width || posY < -obj.height || posX > this.width || posY > this.height) continue;
       // Draw an object by using its sprite or its draw function
-      if (obj.sprite) canvas.drawImage( this.sprite, posX, posY, this.width, this.height );
-      else            obj.draw(this.canvas);
+      if (obj.sprite) canvas.drawImage( obj.sprite, posX, posY, this.width, this.height);
+      else            obj.draw.bind(obj)(this.canvas);
     }
+
+    this.rendering = false;
   }
 
 
@@ -198,14 +181,14 @@ export class Game {
     // Detect keydown events and update the list of controls.
     document.addEventListener('keydown', event => {
       const buttonID = event.code || event.key;
-      const actions = this.state.actions.filter(a => a.controls.includes(buttonID));
+      const actions = this.actions.filter(a => a.controls.includes(buttonID));
       actions.map(a => a.active = true);
     });
 
     // Detect keyup events and update the list of controls.
     document.addEventListener('keyup', event => {
       const buttonID = event.code || event.key;
-      const actions = this.state.actions.filter(a => a.controls.includes(buttonID));
+      const actions = this.actions.filter(a => a.controls.includes(buttonID));
       actions.map(a => a.active = false);
     });
   }
@@ -213,7 +196,7 @@ export class Game {
 
   /** @returns {Array} The list of currently active actions. */
   get currentActions() {
-    return this.state.actions.filter(a => a.active).map(a => a.name);
+    return this.actions.filter(a => a.active).map(a => a.name);
   }
 }
 
@@ -251,7 +234,7 @@ class Level {
   }
 
   addObject(options) {
-    const spr = new GameObject(this, options);
+    const spr = new GameObject(options);
     this.objects.push(spr);
     return spr;
   }
@@ -291,7 +274,7 @@ class GameObject {
     width = 0,
     height = 0,
     sprite = null,
-    draw = canvas => {},
+    draw = ()=>{},
     collision = false,
     damage = false,
   }) {
@@ -302,10 +285,11 @@ class GameObject {
     this.width = width;
     this.height = height;
     this.sprite = sprite;
-    this.draw = draw;
+    this.draw = draw instanceof Function ? draw : function(){};
 
     this.collision = collision;
     this.damage = damage;
+    console.log(this);
   }
 
   /**
