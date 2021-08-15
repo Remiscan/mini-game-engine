@@ -2,8 +2,6 @@ import * as GEM from '../game-engine.min.js';
 
 
 
-let startTime;
-
 const actions = [
   {
     name: 'Jump',
