@@ -49,7 +49,7 @@ const update = function(state, actions, ticks) {
     }
   }
 
-  startTime = endTime;
+  state.startTime = endTime;
 
   return state;
 };
