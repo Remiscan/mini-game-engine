@@ -3,24 +3,9 @@ import * as GEM from '../game-engine.min.js';
 
 
 // User controls
-const actions = [
-  {
-    name: 'Jump',
-    controls: ['Space']
-  }, {
-    name: 'Up',
-    controls: ['ArrowUp', 'KeyW']
-  }, {
-    name: 'Down',
-    controls: ['ArrowDown', 'KeyS']
-  }, {
-    name: 'Left',
-    controls: ['ArrowLeft', 'KeyA']
-  }, {
-    name: 'Right',
-    controls: ['ArrowRight', 'KeyD']
-  }
-];
+const actions = {
+  jump: ['Space']
+};
 
 
 
@@ -57,9 +42,9 @@ const update = function(ticks) {
   console.log(`New tick after ${endTime - this.state.startTime} ms`);
 
   console.log('Actions:', this.state.actions);
-  console.log('Objects:', this.state.level.objects);
+  //console.log('Left:', this.actions.find(a => a.name == 'Left'));
 
-  if (this.state.actions.includes('Jump')) { this.state.jumpFrames++; }
+  if (this.state.actions.includes('jump')) { this.state.jumpFrames++; }
   else {
     if (this.state.jumpFrames > 0) {
       console.log(`Jumped for ${this.state.jumpFrames} ticks`);

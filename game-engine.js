@@ -31,7 +31,21 @@ export class Game {
     this.paused = false;
     this.mute = false;
     this.levels = levels;
-    this.actions = actions;
+
+    const defaultActions = {
+      up: ['ArrowUp', 'KeyW'],
+      down: ['ArrowDown', 'KeyS'],
+      left: ['ArrowLeft', 'KeyA'],
+      right: ['ArrowRight', 'KeyD']
+    };
+    this.actions = Object.assign(defaultActions, actions);
+
+    this.controls = {};
+    for (const action of Object.keys(this.actions)) {
+      for (const control of this.actions[action]) {
+        this.controls[control] = false;
+      }
+    }
 
     // State of the game, used to compute what to display on the next frame
     this.state = state;
@@ -180,23 +194,33 @@ export class Game {
   initControls() {
     // Detect keydown events and update the list of controls.
     document.addEventListener('keydown', event => {
-      const buttonID = event.code || event.key;
-      const actions = this.actions.filter(a => a.controls.includes(buttonID));
-      actions.map(a => a.active = true);
+      if (event.repeat) return;
+      console.log('keydown', event);
+      const id = event.code || event.key;
+      if (typeof this.controls[id] === undefined) return;
+      this.controls[id] = true;
     });
 
     // Detect keyup events and update the list of controls.
     document.addEventListener('keyup', event => {
-      const buttonID = event.code || event.key;
-      const actions = this.actions.filter(a => a.controls.includes(buttonID));
-      actions.map(a => a.active = false);
+      console.log('keyup', event);
+      const id = event.code || event.key;
+      if (typeof this.controls[id] === undefined) return;
+      this.controls[id] = false;
     });
   }
 
 
   /** @returns {Array} The list of currently active actions. */
   get currentActions() {
-    return this.actions.filter(a => a.active).map(a => a.name);
+    const allActions = Object.keys(this.actions);
+    const active = new Set();
+    for (const action of allActions) {
+      for (const key of this.actions[action]) {
+        if (this.controls[key] === true) active.add(action);
+      }
+    }
+    return [...active];
   }
 }
 
