@@ -20,7 +20,7 @@ export class Game {
     state = {},
     actions = {},
     levels = [],
-    tickRate = 60
+    tickRate = 60,
   } = {}) {
     this.canvas = canvas.getContext('2d');
     this.html = html;
@@ -118,6 +118,7 @@ export class Game {
    */
   render(frameTime) {
     if (this.rendering) return;
+    //console.log('[Render] Starting...');
     this.rendering = true;
     this.lastRender = frameTime;
 
@@ -136,10 +137,11 @@ export class Game {
       if (posX < -obj.width || posY < -obj.height || posX > this.width || posY > this.height) continue;
       // Draw an object by using its sprite or its draw function
       if (obj.sprite) canvas.drawImage( obj.sprite, posX, posY, this.width, this.height);
-      else            obj.draw.bind(obj)(this.canvas);
+      else            obj.draw(this.canvas);
     }
 
     this.rendering = false;
+    //console.log('[Render] Done ✅');
   }
 
 
@@ -195,7 +197,7 @@ export class Game {
     // Detect keydown events and update the list of controls.
     document.addEventListener('keydown', event => {
       if (event.repeat) return;
-      console.log('keydown', event);
+      //console.log('keydown', event);
       const id = event.code || event.key;
       if (typeof this.controls[id] === undefined) return;
       this.controls[id] = true;
@@ -203,7 +205,7 @@ export class Game {
 
     // Detect keyup events and update the list of controls.
     document.addEventListener('keyup', event => {
-      console.log('keyup', event);
+      //console.log('keyup', event);
       const id = event.code || event.key;
       if (typeof this.controls[id] === undefined) return;
       this.controls[id] = false;
@@ -238,7 +240,7 @@ class Level {
     width = null,
     height = null,
     objects = [],
-    sounds = []
+    sounds = [],
   }) {
     this.id = id || game.levels.length;
     this.width = width || game.width;
@@ -292,39 +294,50 @@ class Level {
  */
 class GameObject {
   constructor({
-    x = 0,
-    y = 0,
-    z = 0,
+    position = {
+      x: 0,
+      y: 0,
+      z: 0
+    },
     width = 0,
     height = 0,
     sprite = null,
-    draw = ()=>{},
+    draw = function(){},
     collision = false,
     damage = false,
+    controllable = false,
   }) {
-    this.position = { x, y, z };
-    this.destination = { x, y, z };
-    this.speed = 0;
+    this.position = position;
+    this.destination = null;
+    this.speed = 0; // pixels per tick
+    this.maxSpeed = 5; // pixels per tick
 
     this.width = width;
     this.height = height;
     this.sprite = sprite;
-    this.draw = draw instanceof Function ? draw : function(){};
+    this.draw = draw.bind(this);
 
     this.collision = collision;
     this.damage = damage;
-    console.log(this);
+    this.controllable = controllable;
   }
 
   /**
-   * Moves a sprite on the canvas.
+   * Computes the position of a moving object on next frame.
    * @param {number} x 
    * @param {number} y 
    * @param {number} z 
-   * @param {number} angle 
    */
   moveTo(x, y, z) {
-
+    const angle = x === this.position.x ? (y > this.position.y ? Math.PI / 2 : -Math.PI / 2)
+                : y === this.position.y ? (x > this.position.x ? 0 : Math.PI)
+                : Math.atan(Math.PI / 180 * (y - this.position.y) / (x - this.position.x));
+    
+    return {
+      x: this.position.x + Math.cos(angle) * this.maxSpeed,
+      y: this.position.y + Math.sin(angle) * this.maxSpeed,
+      z
+    };
   }
 }
 
