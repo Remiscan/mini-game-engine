@@ -1,4 +1,4 @@
-import * as GEM from '../game-engine.min.js';
+import * as GEM from '../game-engine.js';
 
 
 
