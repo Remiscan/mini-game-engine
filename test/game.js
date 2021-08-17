@@ -2,28 +2,17 @@ import * as GEM from '../game-engine.js';
 
 
 
-let player, rect;
-
-
-
-// User controls
-const actions = {
-  jump: ['Space']
-};
-
-
-
-// Initial state
-const state = {
-  jumpFrames: 0,
-  startTime: performance.now()
-};
-
-
-
 // Game loop functions
 const start = async function() {
   console.log('[Start] Starting...');
+
+  this.state.jumpFrames = 0;
+  this.state.startTime = performance.now();
+
+  // User controls
+  this.addActions({
+    jump: ['Space']
+  });
 
   const level0 = this.addLevel({
     id: 'test0'
@@ -42,7 +31,7 @@ const start = async function() {
   });
 
   // Red square
-  rect = level0.addObject({
+  level0.addObject({
     id: 'rect',
     width: 32,
     height: 32,
@@ -122,7 +111,7 @@ const update = function(ticks) {
 
 
 
-const game = new GEM.Game(start, update, [], { tickRate: 60, actions, state });
+const game = new GEM.Game(start, update, { tickRate: 60 });
 
 
 
