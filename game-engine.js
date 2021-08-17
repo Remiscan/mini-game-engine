@@ -382,6 +382,7 @@ export class GameObject {
     this.maxSpeed = maxSpeed; // pixels per tick
     this.speed = { x: 0, y: 0 }; // pixels per tick
     this.angle = 0;
+    this.state = {};
 
     this.width = width;
     this.height = height;
