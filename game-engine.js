@@ -135,9 +135,9 @@ export class Game {
       const posY = obj.position.y - camera.y;
       // Don't draw an object that's outside of the camera view
       if (posX < -obj.width || posY < -obj.height || posX > this.width || posY > this.height) continue;
-      // Draw an object by using its sprite or its draw function
-      if (obj.sprite) canvas.drawImage( obj.sprite, posX, posY, this.width, this.height);
-      else            obj.draw(this.canvas);
+      this.canvas.save();
+      obj.draw(this.canvas, { x: posX, y: posY, game: this });
+      this.canvas.restore();
     }
 
     this.rendering = false;
