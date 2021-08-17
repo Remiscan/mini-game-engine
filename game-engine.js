@@ -234,36 +234,61 @@ export class Game {
  * @property {object} sounds - The list of sounds used in the level.
  * @property {AudioContext|webkitAudioContext} audioCtx - The audio context.
  */
-class Level {
+export class Level {
   constructor(game, {
     id = null,
     width = null,
     height = null,
-    objects = [],
-    sounds = [],
-  }) {
+  } = {}) {
+    this.game = game;
     this.id = id || game.levels.length;
     this.width = width || game.width;
     this.height = height || game.height;
-    this.objects = objects;
-    this.sounds = sounds.map(name => { return { id: name, sound: null } });
+    this.objects = [];
+    this.assets = [];
     this.camera = { x: 0, y: 0, z: 0, angle: 0, perspective: 0 };
+    this.audioCtx = game.audioCtx;
   }
 
   async load() {
-    // Load sounds.
-    let responses = await Promise.all(this.sounds.map(sound => fetch(`./assets/${sound}.mp3`)));
+    // Load assets
+    return await Promise.all(this.assets.map(async asset => {
+      let response = await fetch(asset.path);
+      switch (asset.type) {
+        case 'sound': {
+          response = await response.arrayBuffer();
+          response = await this.audioCtx.decodeAudioData(response);
+        } break;
+        case 'image': {
+          response = await response.blob();
+          response = await createImageBitmap(response);
+        } break;
+      }
+      if (asset.type === 'sound') {
+        response = await response.arrayBuffer();
+        response = await this.audioCtx.decodeAudioData(response);
+      }
+      return asset.data = response;
+    }));
+    /*let responses = await Promise.all(this.sounds.map(sound => fetch(`./assets/${sound}.mp3`)));
     responses = await Promise.all(responses.map(r => r.arrayBuffer()));
     responses = await Promise.all(responses.map(r => audioCtx.decodeAudioData(r)));
     this.sounds = this.sounds.map((id, k) => { return { id: id, sound: responses[k] } });
-    return;
+    return;*/
   }
 
   addObject(options) {
-    const spr = new GameObject(options);
+    const spr = new GameObject(this, options);
     this.objects.push(spr);
     return spr;
   }
+
+  getObject(id) {
+    return this.objects.find(o => o.id === id);
+  }
+
+  addSound(id, path) { this.assets.push({ type: 'sound', id, path }); }
+  addImage(id, path) { this.assets.push({ type: 'image', id, path }); }
 
   /**
    * Move the camera by moving all objects on the canvas.
@@ -285,6 +310,16 @@ class Level {
       );
     }
   }
+
+  static objectsCollide(obj1, obj2) {
+    if (
+      (obj1.position.x + obj1.width < obj2.position.x)
+      || (obj2.position.x + obj2.width < obj1.position.x)
+      || (obj1.position.y + obj1.height < obj2.position.y)
+      || (obj2.position.y + obj2.height < obj1.position.y)
+    ) return false;
+    return true;
+  }
 }
 
 
@@ -292,8 +327,9 @@ class Level {
 /**
  * @class GameObject.
  */
-class GameObject {
-  constructor({
+export class GameObject {
+  constructor(level, {
+    id = null,
     position = {
       x: 0,
       y: 0,
@@ -301,25 +337,29 @@ class GameObject {
     },
     width = 0,
     height = 0,
-    sprite = null,
+    assets = [],
     draw = function(){},
     collision = false,
     damage = false,
     controllable = false,
-  }) {
+  } = {}) {
+    this.level = level;
+    this.game = level.game;
+
+    this.id = id;
     this.position = position;
-    this.destination = null;
     this.speed = 0; // pixels per tick
     this.maxSpeed = 5; // pixels per tick
 
     this.width = width;
     this.height = height;
-    this.sprite = sprite;
     this.draw = draw.bind(this);
 
     this.collision = collision;
     this.damage = damage;
     this.controllable = controllable;
+
+    this.assets = level.assets.filter(a => assets.includes(a.id));
   }
 
   /**
@@ -338,6 +378,26 @@ class GameObject {
       y: this.position.y + Math.sin(angle) * this.maxSpeed,
       z
     };
+  }
+
+  /**
+   * Determines if there is collision between two objects.
+   * @param {GameObject} obj 
+   */
+  collidesWith(obj) {
+    return Level.objectsCollide(this, obj);
+  }
+
+  /** Returns a list of objects that collide with this object. */
+  allCollisions() {
+    const objects = this.level.objects;
+    const cols = [];
+    for (const obj of objects) {
+      if (obj === this) continue;
+      if (obj.collision === false) continue;
+      if (this.collidesWith(obj)) cols.push(obj);
+    }
+    return cols;
   }
 }
 
