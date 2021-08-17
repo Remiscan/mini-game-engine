@@ -181,9 +181,9 @@ export class Game {
     if (this.mute) return;
 
     const sound = this.audioCtx.createBufferSource();
-    const k = this.state.level.sounds.findIndex(s => s.id == id);
-    if (k == -1) throw `Sound ${id} doesn't exist`;
-    sound.buffer = this.state.level.sounds[k].sound;
+    const data = this.state.level.assets.find(s => s.id == id)?.data;
+    if (typeof data === 'undefined') throw `Sound ${id} doesn't exist`;
+    sound.buffer = data;
     sound.connect(this.audioCtx.destination);
     sound.start();
   }
@@ -455,7 +455,7 @@ export class GameObject {
       x: max * cos,
       y: max * sin
     };
-    this.move(options);
+    return this.move(options);
   }
 
 

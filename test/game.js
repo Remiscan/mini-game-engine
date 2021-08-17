@@ -19,6 +19,7 @@ const start = async function() {
   });
 
   level0.addImage('boole', 'assets/boole1.png');
+  level0.addSound('bump', 'assets/ouch.mp3');
 
   // Black background
   level0.addObject({
@@ -95,6 +96,8 @@ const update = function(ticks) {
 
   const players = this.state.level.objects.filter(obj => obj.controllable);
   for (const player of players) {
+    const oldPosition = Object.assign({}, player.position);
+
     // Determine object speed depending on pressed controls (in pixels per tick)
     const direction = {
       x: (-this.state.actions.includes('left') + this.state.actions.includes('right')) * ticks,
@@ -102,7 +105,13 @@ const update = function(ticks) {
     };
     if (direction.x === 0 && direction.y === 0) continue;
 
-    player.moveByVector(direction);
+    const movedTo = player.moveByVector(direction);
+    if ((direction.x !== 0 || direction.y !== 0) && movedTo.x === oldPosition.x && movedTo.y === oldPosition.y) {
+      if (!player.state.bumped) this.playSound('bump');
+      player.state.bumped = true;
+    } else {
+      player.state.bumped = false;
+    }
   }
 
   this.state.startTime = endTime;
