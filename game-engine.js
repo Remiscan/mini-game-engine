@@ -310,16 +310,6 @@ export class Level {
       );
     }
   }
-
-  static objectsCollide(obj1, obj2) {
-    if (
-      (obj1.position.x + obj1.width < obj2.position.x)
-      || (obj2.position.x + obj2.width < obj1.position.x)
-      || (obj1.position.y + obj1.height < obj2.position.y)
-      || (obj2.position.y + obj2.height < obj1.position.y)
-    ) return false;
-    return true;
-  }
 }
 
 
@@ -335,6 +325,7 @@ export class GameObject {
       y: 0,
       z: 0
     },
+    maxSpeed = 0,
     width = 0,
     height = 0,
     assets = [],
@@ -348,8 +339,9 @@ export class GameObject {
 
     this.id = id;
     this.position = position;
-    this.speed = 0; // pixels per tick
-    this.maxSpeed = 5; // pixels per tick
+    this.maxSpeed = maxSpeed; // pixels per tick
+    this.speed = { x: 0, y: 0 }; // pixels per tick
+    this.angle = 0;
 
     this.width = width;
     this.height = height;
@@ -368,16 +360,49 @@ export class GameObject {
    * @param {number} y 
    * @param {number} z 
    */
-  moveTo(x, y, z) {
-    const angle = x === this.position.x ? (y > this.position.y ? Math.PI / 2 : -Math.PI / 2)
-                : y === this.position.y ? (x > this.position.x ? 0 : Math.PI)
-                : Math.atan(Math.PI / 180 * (y - this.position.y) / (x - this.position.x));
-    
-    return {
-      x: this.position.x + Math.cos(angle) * this.maxSpeed,
-      y: this.position.y + Math.sin(angle) * this.maxSpeed,
-      z
+  move({ apply = true } = {}) {
+    const oldPosition = Object.assign({}, this.position);
+    const width = this.width, height = this.height;
+
+    let x = this.position.x + this.speed.x;
+    let y = this.position.y + this.speed.y;
+
+    const tempXY = new GameObject(this.level, { position: { x, y }, width, height, collision: true });
+    const collisionsXY = tempXY.allCollisions({ exclude: [this] });    
+    const collidesXY = collisionsXY.length > 0;
+
+    if (collidesXY) {
+      const distances = collisionsXY.map(obj => this.distanceTo(obj));
+      const minDistance = { x: Math.min(distances.map(d => d.x)), y: Math.min(distances.map(d => d.y)) };
+
+      x += minDistance.x;
+      y += minDistance.y;
+
+      const tempX = new GameObject(this.level, { position: { x, y: oldPosition.y }, width, height, collision: true });
+      const tempY = new GameObject(this.level, { position: { x: oldPosition.x, y }, width, height, collision: true });
+      const collidesX = tempX.allCollisions({ exclude: [this] }).length > 0;
+      const collidesY = tempY.allCollisions({ exclude: [this] }).length > 0;
+      console.log(collidesX, collidesY);
+
+      if (collidesX && !collidesY)      x -= this.speed.x;
+      else if (collidesY && !collidesX) y -= this.speed.y;
+      else x -= this.speed.x, y -= this.speed.y;
+    }
+
+    if (apply) this.position = Object.assign(this.position, { x, y });
+    return { x, y };
+  }
+
+  moveByVector({ x, y }, options) {
+    const cos = x / Math.sqrt(x**2 + y**2);
+    const sin = y * Math.sqrt(1 - cos**2);
+    const max = this.maxSpeed;
+
+    this.speed = {
+      x: max * cos,
+      y: max * sin
     };
+    this.move(options);
   }
 
   /**
@@ -385,19 +410,40 @@ export class GameObject {
    * @param {GameObject} obj 
    */
   collidesWith(obj) {
-    return Level.objectsCollide(this, obj);
+    if (
+      (
+        (this.position.x <= obj.position.x && this.position.x + this.width > obj.position.x)
+        || (this.position.x < obj.position.x + obj.width && this.position.x + this.width >= obj.position.x + obj.width)
+      ) && (
+        (this.position.y <= obj.position.y && this.position.y + this.height > obj.position.y)
+        || (this.position.y < obj.position.y + obj.height && this.position.y + this.height >= obj.position.y + obj.height)
+      )
+    ) return true;
+    return false;
   }
 
   /** Returns a list of objects that collide with this object. */
-  allCollisions() {
+  allCollisions({ exclude = [], forceCollision = false } = {}) {
     const objects = this.level.objects;
     const cols = [];
     for (const obj of objects) {
-      if (obj === this) continue;
-      if (obj.collision === false) continue;
+      if (obj === this || exclude.includes(obj)) continue;
+      if (!forceCollision && (!this.collision || !obj.collision)) continue;
       if (this.collidesWith(obj)) cols.push(obj);
     }
     return cols;
+  }
+
+  /** Distance from this to an object. */
+  distanceTo(obj) {
+    let dx = 0, dy = 0;
+    if (!this.collidesWith(obj)) {
+      if (obj.position.x + obj.width < this.position.x)        dx = (obj.position.x + obj.width) - this.position.x;
+      else if (this.position.x + this.width < obj.position.x)  dx = obj.position.x - (this.position.x + this.width);
+      if (obj.position.y + obj.height < this.position.y)       dy = (obj.position.y + obj.height) - this.position.y;
+      else if (this.position.y + this.height < obj.position.y) dy = obj.position.y - (this.position.y + this.height);
+    }
+    return { x: dx, y: dy };
   }
 }
 
