@@ -19,9 +19,6 @@ const start = async function() {
     height: 200*/
   });
 
-  level0.addImage('boole', 'assets/boole1.png');
-  level0.addSound('bump', 'assets/ouch.mp3');
-
   // Black background
   level0.addObject({
     width: level0.width,
@@ -50,6 +47,8 @@ const start = async function() {
   });
 
   // Boole the frog
+  this.addImage('boole', 'assets/boole1.png');
+  this.addSound('bump', 'assets/ouch.mp3');
   level0.addObject({
     id: 'player',
     width: 32,
@@ -61,9 +60,10 @@ const start = async function() {
     maxSpeed: 5,
     controllable: true,
     collision: true,
-    assets: ['boole'],
+    assets: ['boole', 'bump'],
     draw: function(canvas, { x, y, game }) {
       const sprite = this.assets.find(a => a.id === 'boole').data;
+      console.log(game.assets, this.assets);
       canvas.imageSmoothingEnabled = false;
       if (this.angle > -Math.PI / 2 && this.angle < Math.PI / 2) {
         canvas.translate(game.width, 0);

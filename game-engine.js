@@ -25,6 +25,7 @@ export class Game {
     this.paused = false;
     this.mute = false;
     this.levels = [];
+    this.assets = [];
 
     // Default actions
     this.actions = {
@@ -138,7 +139,7 @@ export class Game {
 
       // Move screen depending on camera view
       this.canvas.translate(-camera.x, -camera.y);
-      
+
       obj.draw(this.canvas, { x: obj.position.x, y: obj.position.y, game: this });
       this.canvas.restore();
     }
@@ -150,11 +151,27 @@ export class Game {
   
   /**
    * Add new user controlled actions.
-   * @param {object} actions - Object whose keys are action names, and values are an array of user controls.
+   * @param {Action} actions - Object whose keys are action names, and values are an array of user controls.
    */
   addActions(actions) {
     this.actions = Object.assign(this.actions, actions);
   }
+
+
+  /**
+   * Add a sound asset to the level
+   * @param {string} id - Identifier of the asset.
+   * @param {string} path - Path of the asset.
+   */
+   addSound(id, path) { this.assets.push({ type: 'sound', id, path }); }
+
+
+   /**
+    * Add an image asset to the level
+    * @param {string} id - Identifier of the asset.
+    * @param {string} path - Path of the asset.
+    */
+   addImage(id, path) { this.assets.push({ type: 'image', id, path }); }
 
 
   /**
@@ -190,7 +207,7 @@ export class Game {
     if (this.mute) return;
 
     const sound = this.audioCtx.createBufferSource();
-    const data = this.state.level.assets.find(s => s.id == id)?.data;
+    const data = this.assets.find(s => s.id == id)?.data;
     if (typeof data === 'undefined') throw `Sound ${id} doesn't exist`;
     sound.buffer = data;
     sound.connect(this.audioCtx.destination);
@@ -279,8 +296,17 @@ export class Level {
 
   /** Preloads all assets of the level. */
   async load() {
+    // Get the list of assets used in this level
+    const assets = new Set();
+    for (const obj of this.objects) {
+      for (const asset of obj.assets) {
+        assets.add(asset);
+      }
+    }
+
     // Load assets
-    return await Promise.all(this.assets.map(async asset => {
+    return await Promise.all([...assets].map(async asset => {
+      if (!!asset.data) return asset.data;
       let response = await fetch(asset.path);
       switch (asset.type) {
         case 'sound': {
@@ -312,22 +338,6 @@ export class Level {
   /*getObject(id) {
     return this.objects.find(o => o.id === id);
   }*/
-
-
-  /**
-   * Add a sound asset to the level
-   * @param {string} id - Identifier of the asset.
-   * @param {string} path - Path of the asset.
-   */
-  addSound(id, path) { this.assets.push({ type: 'sound', id, path }); }
-
-
-  /**
-   * Add an image asset to the level
-   * @param {string} id - Identifier of the asset.
-   * @param {string} path - Path of the asset.
-   */
-  addImage(id, path) { this.assets.push({ type: 'image', id, path }); }
 
 
   /**
@@ -407,7 +417,7 @@ export class GameObject {
     this.damage = damage;
     this.controllable = controllable;
 
-    this.assets = level.assets.filter(a => assets.includes(a.id));
+    this.assets = this.game.assets.filter(a => assets.includes(a.id));
   }
 
 
