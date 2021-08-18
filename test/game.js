@@ -92,7 +92,7 @@ const update = function(ticks) {
   }
 
   // Move all playable objects
-  const players = this.state.level.objects.filter(obj => obj.controllable);
+  const players = [...this.state.level.objects].filter(obj => obj.controllable);
   for (const player of players) {
     const oldPosition = Object.assign({}, player.position);
 

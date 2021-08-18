@@ -121,7 +121,7 @@ export class Game {
 
     const camera = this.state.level.camera;
     // Sort objects by their elevation (z)
-    const orderedObjects = this.state.level.objects.sort((a, b) => a.z < b.z ? -1 : a.z > b.z ? 1 : 0);
+    const orderedObjects = [...this.state.level.objects].sort((a, b) => a.z < b.z ? -1 : a.z > b.z ? 1 : 0);
     // Draw all objects from the current level
     for (const obj of orderedObjects) {
       // Compute the position of the object in the current camera view
@@ -256,7 +256,7 @@ export class Level {
     this.id = id || game.levels.length;
     this.width = width || game.width;
     this.height = height || game.height;
-    this.objects = [];
+    this.objects = new Set();
     this.assets = [];
     this.camera = { x: 0, y: 0, z: 0, angle: 0, perspective: 0 };
     this.audioCtx = game.audioCtx;
@@ -289,7 +289,7 @@ export class Level {
    */
   addObject(params) {
     const spr = new GameObject(this, params);
-    this.objects.push(spr);
+    this.objects.add(spr);
     return spr;
   }
 
@@ -486,9 +486,8 @@ export class GameObject {
    * @return {GameObject[]} List of objects colliding with this object.
    */
   allCollisions({ exclude = [], forceCollision = false } = {}) {
-    const objects = this.level.objects;
     const cols = [];
-    for (const obj of objects) {
+    for (const obj of this.level.objects) {
       if (obj === this || exclude.includes(obj)) continue;
       if (!forceCollision && (!this.collision || !obj.collision)) continue;
       if (this.collidesWith(obj)) cols.push(obj);
