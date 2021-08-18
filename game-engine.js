@@ -124,13 +124,22 @@ export class Game {
     const orderedObjects = [...this.state.level.objects].sort((a, b) => a.z < b.z ? -1 : a.z > b.z ? 1 : 0);
     // Draw all objects from the current level
     for (const obj of orderedObjects) {
-      // Compute the position of the object in the current camera view
-      const posX = obj.position.x - camera.x;
-      const posY = obj.position.y - camera.y;
-      // Don't draw an object that's outside of the camera view
-      if (posX < -obj.width || posY < -obj.height || posX > this.width || posY > this.height) continue;
       this.canvas.save();
-      obj.draw(this.canvas, { x: posX, y: posY, game: this });
+
+      // Don't display what's outside the level or camera view
+      let border = new Path2D();
+      border.rect(
+        Math.max(0, -camera.x),
+        Math.max(0, -camera.y),
+        Math.min(obj.level.width, this.width),
+        Math.min(obj.level.height, this.height)
+      );
+      this.canvas.clip(border);
+
+      // Move screen depending on camera view
+      this.canvas.translate(-camera.x, -camera.y);
+      
+      obj.draw(this.canvas, { x: obj.position.x, y: obj.position.y, game: this });
       this.canvas.restore();
     }
 
@@ -258,8 +267,14 @@ export class Level {
     this.height = height || game.height;
     this.objects = new Set();
     this.assets = [];
-    this.camera = { x: 0, y: 0, z: 0, angle: 0, perspective: 0 };
+    this.camera = {
+      x: this.width < game.width ? (this.width - game.width) / 2 : 0,
+      y: this.height < game.height ? (this.height - game.height) / 2 : 0,
+      z: 0,
+      perspective: 0
+    };
     this.audioCtx = game.audioCtx;
+    console.log(this.camera);
   }
 
   /** Preloads all assets of the level. */

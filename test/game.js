@@ -14,7 +14,9 @@ const start = async function() {
   });
 
   const level0 = this.addLevel({
-    id: 'test0'
+    id: 'test0',
+    /*width: 200,
+    height: 200*/
   });
 
   level0.addImage('boole', 'assets/boole1.png');
@@ -22,8 +24,8 @@ const start = async function() {
 
   // Black background
   level0.addObject({
-    width: this.width,
-    height: this.height,
+    width: level0.width,
+    height: level0.height,
     draw: function(canvas) {
       canvas.fillStyle = 'black';
       canvas.fillRect(0, 0, this.width, this.height);
