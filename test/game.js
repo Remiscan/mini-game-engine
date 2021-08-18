@@ -64,7 +64,7 @@ const start = async function() {
     draw: function(canvas, { x, y, game }) {
       const sprite = this.assets.find(a => a.id === 'boole').data;
       canvas.imageSmoothingEnabled = false;
-      if (this.angle > -Math.PI / 2 && this.angle < Math.PI / 2) {
+      if (this.state.facingRight) {
         canvas.translate(game.width, 0);
         canvas.scale(-1, 1);
         canvas.drawImage(sprite, game.width - x, y, -this.width, this.height);
@@ -102,6 +102,8 @@ const update = function(ticks) {
       x: (-this.state.actions.includes('left') + this.state.actions.includes('right')) * ticks,
       y: (-this.state.actions.includes('up') + this.state.actions.includes('down')) * ticks
     };
+    if (direction.x > 0) player.state.facingRight = true;
+    else if (direction.x < 0) player.state.facingRight = false;
     if (direction.x === 0 && direction.y === 0) {
       player.state.bumped = false;
       continue;
