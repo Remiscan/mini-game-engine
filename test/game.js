@@ -101,17 +101,18 @@ const update = function(ticks) {
       x: (-this.state.actions.includes('left') + this.state.actions.includes('right')) * ticks,
       y: (-this.state.actions.includes('up') + this.state.actions.includes('down')) * ticks
     };
-    if (direction.x === 0 && direction.y === 0) continue;
+    if (direction.x === 0 && direction.y === 0) {
+      player.state.bumped = false;
+      continue;
+    }
 
     // Move the object
     const movedTo = player.moveByVector(direction);
 
     // Play a sound when the object collides with another
-    if ((direction.x !== 0 || direction.y !== 0) && movedTo.x === oldPosition.x && movedTo.y === oldPosition.y) {
+    if (movedTo.x === oldPosition.x && movedTo.y === oldPosition.y) {
       if (!player.state.bumped) this.playSound('bump');
       player.state.bumped = true;
-    } else {
-      player.state.bumped = false;
     }
   }
 };
