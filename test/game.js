@@ -2,12 +2,11 @@ import * as GEM from '../game-engine.js';
 
 
 
-// Game loop functions
+/* Prepare the game */
 const start = async function() {
   console.log('[Start] Starting...');
 
   this.state.jumpFrames = 0;
-  this.state.startTime = performance.now();
 
   // User controls
   this.addActions({
@@ -79,13 +78,11 @@ const start = async function() {
   return;
 };
 
+
+
+/* Game loop */
 const update = function(ticks) {
-  const endTime = performance.now();
-  //console.log(`[Update] New tick after ${endTime - this.state.startTime} ms`);
-
-  //console.log('Actions:', this.state.actions);
-  //console.log('Left:', this.actions.find(a => a.name == 'Left'));
-
+  // Count the number of frames the user performed the 'jump' action
   if (this.state.actions.includes('jump')) { this.state.jumpFrames++; }
   else {
     if (this.state.jumpFrames > 0) {
@@ -94,6 +91,7 @@ const update = function(ticks) {
     }
   }
 
+  // Move all playable objects
   const players = this.state.level.objects.filter(obj => obj.controllable);
   for (const player of players) {
     const oldPosition = Object.assign({}, player.position);
@@ -105,7 +103,10 @@ const update = function(ticks) {
     };
     if (direction.x === 0 && direction.y === 0) continue;
 
+    // Move the object
     const movedTo = player.moveByVector(direction);
+
+    // Play a sound when the object collides with another
     if ((direction.x !== 0 || direction.y !== 0) && movedTo.x === oldPosition.x && movedTo.y === oldPosition.y) {
       if (!player.state.bumped) this.playSound('bump');
       player.state.bumped = true;
@@ -113,9 +114,6 @@ const update = function(ticks) {
       player.state.bumped = false;
     }
   }
-
-  this.state.startTime = endTime;
-  //console.log('[Update] Done ✅');
 };
 
 
