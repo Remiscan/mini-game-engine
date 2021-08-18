@@ -283,7 +283,6 @@ export class Level {
     this.width = width || game.width;
     this.height = height || game.height;
     this.objects = new Set();
-    this.assets = [];
     this.camera = {
       x: this.width < game.width ? (this.width - game.width) / 2 : 0,
       y: this.height < game.height ? (this.height - game.height) / 2 : 0,
