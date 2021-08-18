@@ -291,7 +291,6 @@ export class Level {
       perspective: 0
     };
     this.audioCtx = game.audioCtx;
-    console.log(this.camera);
   }
 
   /** Preloads all assets of the level. */

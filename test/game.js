@@ -63,7 +63,6 @@ const start = async function() {
     assets: ['boole', 'bump'],
     draw: function(canvas, { x, y, game }) {
       const sprite = this.assets.find(a => a.id === 'boole').data;
-      console.log(game.assets, this.assets);
       canvas.imageSmoothingEnabled = false;
       if (this.angle > -Math.PI / 2 && this.angle < Math.PI / 2) {
         canvas.translate(game.width, 0);
