@@ -192,9 +192,9 @@ export class Game {
    */
   async loadLevel(id) {
     this.pause = true;
-    const lev = this.levels.find(level => level.id === id);
-    await lev.load();
-    this.state.level = lev;
+    const newLevel = this.levels.find(level => level.id === id);
+    await newLevel.load();
+    this.state.level = newLevel;
     this.pause = false;
   }
 
@@ -292,9 +292,10 @@ export class Level {
     this.audioCtx = game.audioCtx;
   }
 
+
   /** Preloads all assets of the level. */
   async load() {
-    // Get the list of assets used in this level
+    // Get the list of assets used in the new level
     const assets = new Set();
     for (const obj of this.objects) {
       for (const asset of obj.assets) {
@@ -303,7 +304,7 @@ export class Level {
     }
 
     // Load assets
-    return await Promise.all([...assets].map(async asset => {
+    await Promise.all([...assets].map(async asset => {
       if (!!asset.data) return asset.data;
       let response = await fetch(asset.path);
       switch (asset.type) {
@@ -318,6 +319,24 @@ export class Level {
       }
       return asset.data = response;
     }));
+
+    const oldLevel = this.game.state.level;
+    if (oldLevel instanceof Level) {
+      // Get the list of assets used in the old level
+      const oldAssets = new Set();
+      for (const obj of oldLevel.objects) {
+        for (const asset of obj.assets) {
+          oldAssets.add(asset);
+        }
+      }
+
+      // Unload old assets
+      for (const asset of oldAssets) {
+        if (!assets.has(asset)) asset.data = null;
+      }
+    }
+    
+    return;
   }
 
 
