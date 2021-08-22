@@ -2,6 +2,61 @@ import * as GEM from '../game-engine.js';
 
 
 
+/* Set game canvas size to a multiple of the cell size. */
+const cellSize = 64;
+const canvas = document.querySelector('canvas');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+class Star {
+  constructor(row, column) {
+    const r = Math.round(2 * Math.random());
+    this.size = r;
+    this.type = r == 0 ? 'blue' : r == 1 ? 'yellow' : 'red';
+    this.position = {
+      x: 64 * column,
+      y: 64 * row,
+      z: 1
+    };
+    const maxDecalage = 20;
+    this.decalage = {
+      x: 32 - maxDecalage + Math.round(2 * maxDecalage * Math.random()),
+      y: 32 - maxDecalage + Math.round(2 * maxDecalage * Math.random())
+    };
+  }
+
+  get params() {
+    return {
+      width: 64,
+      height: 64,
+      position: this.position,
+      draw: function(canvas) {
+        console.log('drawing');
+        canvas.imageSmoothingEnabled = true;
+        canvas.beginPath();
+        /*canvas.arc(
+          this.position.x + 32 - maxDecalage + Math.round(2 * maxDecalage * Math.random()), // x
+          this.position.y + 32 - maxDecalage + Math.round(2 * maxDecalage * Math.random()), // y
+          4 + 4 * this.size, // r
+          0, 2 * Math.PI
+        );*/
+        canvas.arc(
+          this.position.x + this.state.decalage.x, // x
+          this.position.y + this.state.decalage.y, // y
+          8 + 2 * this.state.size, // r
+          0, 2 * Math.PI
+        );
+        //canvas.fillStyle = `hsl(${this.state.size === 0 ? 200 : this.state.size === 1 ? 40 : 10}, 40%, 80%)`;
+        canvas.fillStyle = this.state.size === 0 ? '#FFCF6E' : this.state.size === 1 ? '#FFFFCF' : '#D7E0FF';
+        canvas.fillStyle += '55';
+        canvas.fill();
+      }
+    }
+  }
+}
+
+
+
 /* Prepare the game */
 const start = async function() {
   console.log('[Start] Starting...');
@@ -15,8 +70,8 @@ const start = async function() {
 
   const level0 = this.addLevel({
     id: 'test0',
-    /*width: 200,
-    height: 200*/
+    width: Math.floor(window.innerWidth / cellSize) * cellSize,
+    height: Math.floor(window.innerHeight / cellSize) * cellSize
   });
 
   // Black background
@@ -72,6 +127,19 @@ const start = async function() {
       else canvas.drawImage(sprite, x, y, this.width, this.height);
     }
   });
+
+  // Star field
+  const spread = 3;
+  for (let row = 0; row < Math.floor(window.innerHeight / cellSize) / spread; row++) {
+    for (let col = 0; col < Math.floor(window.innerWidth / cellSize) / spread; col++) {
+      /*const r = Math.round(3 * Math.random());
+      if (r > 0) continue;*/
+      const star = new Star(row * spread + Math.round((spread - 1) * Math.random()), col * spread + Math.round((spread - 1) * Math.random()));
+      const starObj = level0.addObject(star.params);
+      starObj.state.decalage = star.decalage;
+      starObj.state.size = star.size;
+    }
+  }
 
   await this.loadLevel('test0');
 
