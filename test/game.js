@@ -1,4 +1,4 @@
-import * as GEM from '../game-engine.js';
+import * as GEM from '../game-engine.min.js';
 
 
 
@@ -31,7 +31,6 @@ class Star {
       height: 64,
       position: this.position,
       draw: function(canvas) {
-        console.log('drawing');
         canvas.imageSmoothingEnabled = true;
         canvas.beginPath();
         /*canvas.arc(
@@ -47,7 +46,9 @@ class Star {
           0, 2 * Math.PI
         );
         //canvas.fillStyle = `hsl(${this.state.size === 0 ? 200 : this.state.size === 1 ? 40 : 10}, 40%, 80%)`;
-        canvas.fillStyle = this.state.size === 0 ? '#FFCF6E' : this.state.size === 1 ? '#FFFFCF' : '#D7E0FF';
+        canvas.fillStyle = this.state.size === 0 ? '#FFCF6E' // small red star
+                         : this.state.size === 1 ? '#FFFFCF' // medium yellow star
+                         : '#D7E0FF'; // big blue star
         canvas.fillStyle += '55';
         canvas.fill();
       }
@@ -64,9 +65,9 @@ const start = async function() {
   this.state.jumpFrames = 0;
 
   // User controls
-  this.addActions({
-    jump: ['Space']
-  });
+  this.addActions(new Map([
+    ['jump', ['Space']]
+  ]));
 
   const level0 = this.addLevel({
     id: 'test0',
@@ -152,7 +153,7 @@ const start = async function() {
 /* Game loop */
 const update = function(ticks) {
   // Count the number of frames the user performed the 'jump' action
-  if (this.state.actions.includes('jump')) { this.state.jumpFrames++; }
+  if (this.state.actions.has('jump')) { this.state.jumpFrames++; }
   else {
     if (this.state.jumpFrames > 0) {
       console.log(`Jumped for ${this.state.jumpFrames} ticks`);
@@ -167,8 +168,8 @@ const update = function(ticks) {
 
     // Determine object speed depending on pressed controls (in pixels per tick)
     const direction = {
-      x: (-this.state.actions.includes('left') + this.state.actions.includes('right')) * ticks,
-      y: (-this.state.actions.includes('up') + this.state.actions.includes('down')) * ticks
+      x: (-this.state.actions.has('left') + this.state.actions.has('right')) * ticks,
+      y: (-this.state.actions.has('up') + this.state.actions.has('down')) * ticks
     };
     if (direction.x > 0) player.state.facingRight = true;
     else if (direction.x < 0) player.state.facingRight = false;

@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Build game-engine.min.js",
+			"command": "tsc && esbuild game-engine.js --minify --format=esm --outfile=game-engine.min.js && del game-engine.js",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
+}
