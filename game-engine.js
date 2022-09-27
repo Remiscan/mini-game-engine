@@ -16,7 +16,8 @@ export class Game {
     html = document.querySelector('accessible-elements'),
     tickRate = 60,
   } = {}) {
-    this.canvas = canvas.getContext('2d');
+    this.canvasElement = canvas;
+    this.canvasCtx = canvas.getContext('2d');
     this.html = html;
 
     this.width = canvas.width;
@@ -50,12 +51,44 @@ export class Game {
     // Function executed on game launch.
     this.start = start.bind(this);
 
+    /* 🔽 Manage render loop 🔽 */
+
+    this.vSync = true;
+    this.rendering = false;
+
+    // Start the render loop
+    async function renderLoop(frameTime = performance.now()) {
+      const render = this.render.bind(this);
+
+      if (this.vSync) {
+        let loopListenerSet = false;
+        const loop = () => {
+          if (this.vSync) {
+            window.requestAnimationFrame(render);
+          } else {
+            this.canvasElement.removeEventListener('renderend', loop);
+            loopListenerSet = false;
+            renderLoop();
+          }
+        };
+        if (!loopListenerSet) {
+          this.canvasElement.addEventListener('renderend', loop);
+          loopListenerSet = true;
+        }
+        window.requestAnimationFrame(render);
+      } else {
+        render(frameTime);
+        renderLoop()
+      }
+    }
+
+    this.renderLoop = renderLoop.bind(this);
+
     /* 🔽 Manage game loop 🔽 */
 
     this.tickRate = tickRate;
     const tickDuration = 1000 / this.tickRate;
     this.computing = false;
-    this.rendering = false;
 
     // Request an update to the game state.
     const requestUpdates = ticks => {
@@ -69,10 +102,8 @@ export class Game {
     };
 
     // Game loop (inspired by https://developer.mozilla.org/en-US/docs/Games/Anatomy).
-    // On each frame:
-    // - request an update to the game state,
-    // - render the current game state.
-    function gameLoop(frameTime) {
+    // On each tick, request an update to the game state.
+    async function gameLoop(frameTime) {
       this.stopLoop = window.requestAnimationFrame(gameLoop.bind(this));
       if (this.paused) return;
 
@@ -84,7 +115,6 @@ export class Game {
       }
 
       requestUpdates(ticks);
-      this.render(frameTime);
     }
 
     this.gameLoop = gameLoop.bind(this);
@@ -103,6 +133,8 @@ export class Game {
 
     await this.start();
     if (!(this.state.level instanceof Level)) throw 'No level loaded';
+
+    this.renderLoop();
     this.gameLoop(performance.now());
   }
 
@@ -114,18 +146,21 @@ export class Game {
   render(frameTime) {
     if (this.rendering) return;
     //console.log('[Render] Starting...');
+
+    this.canvasElement.dispatchEvent(new CustomEvent('renderstart', { detail: { time: performance.now() } } ));
+
     this.rendering = true;
     this.lastRender = frameTime;
 
     // Clears the previous frame
-    this.canvas.clearRect(0, 0, this.width, this.height);
+    this.canvasCtx.clearRect(0, 0, this.width, this.height);
 
     const camera = this.state.level.camera;
     // Sort objects by their elevation (z)
     const orderedObjects = [...this.state.level.objects].sort((a, b) => a.z < b.z ? -1 : a.z > b.z ? 1 : 0);
     // Draw all objects from the current level
     for (const obj of orderedObjects) {
-      this.canvas.save();
+      this.canvasCtx.save();
 
       // Don't display what's outside the level or camera view
       let border = new Path2D();
@@ -135,16 +170,18 @@ export class Game {
         Math.min(obj.level.width, this.width),
         Math.min(obj.level.height, this.height)
       );
-      this.canvas.clip(border);
+      this.canvasCtx.clip(border);
 
       // Move screen depending on camera view
-      this.canvas.translate(-camera.x, -camera.y);
+      this.canvasCtx.translate(-camera.x, -camera.y);
 
-      obj.draw(this.canvas, { x: obj.position.x, y: obj.position.y, game: this });
-      this.canvas.restore();
+      obj.draw(this.canvasCtx, { x: obj.position.x, y: obj.position.y, game: this });
+      this.canvasCtx.restore();
     }
 
     this.rendering = false;
+
+    this.canvasElement.dispatchEvent(new CustomEvent('renderend', { detail: { time: performance.now() } } ));
     //console.log('[Render] Done ✅');
   }
 
